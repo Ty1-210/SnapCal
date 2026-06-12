@@ -1,0 +1,5 @@
+.build/
+SnapCal.app/
+Launcher.app/
+.DS_Store
+*.xcodeproj
