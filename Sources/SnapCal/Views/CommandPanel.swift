@@ -5,6 +5,7 @@ class CommandPanelController {
     static let shared = CommandPanelController()
     private var window: NSWindow?
     private var lastFrame: NSRect = .zero
+    var isVisible: Bool { window?.isVisible ?? false }
 
     func show() {
         if window == nil {

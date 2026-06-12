@@ -8,17 +8,15 @@
 [![swift](https://img.shields.io/badge/swift-5.9-orange)](https://github.com/Ty1-210/SnapCal)
 [![license](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
-![SnapCal](./AppIcon.png)
-
 ---
 
 ## 📥 安装
 
 ### 直接下载（推荐）
 
-从 [Releases](https://github.com/Ty1-210/SnapCal/releases) 下载 `SnapCal-v1.0.zip`，解压后拖入 `应用程序` 文件夹，双击运行。
+从 [Releases](https://github.com/Ty1-210/SnapCal/releases) 下载 `SnapCal-v1.0.zip`，解压后双击运行。
 
-> 首次打开时，在 Finder 中右键 SnapCal.app → 打开，确认安全提示。
+> 首次打开：Finder 中右键 SnapCal.app → 打开，确认安全提示。
 
 ### 从源码编译
 
@@ -26,7 +24,6 @@
 git clone git@github.com:Ty1-210/SnapCal.git
 cd SnapCal
 swift build -c release
-# 编译产物在 .build/arm64-apple-macosx/release/SnapCal
 ```
 
 ## ⚙️ 配置
@@ -42,15 +39,11 @@ swift build -c release
 ## 🎯 使用
 
 1. **复制** 活动文本（⌘C）
-2. 菜单栏点击 🗓 > **打开面板**（或 ⌘⇧`）
+2. 菜单栏点击 🗓 > **打开面板**
 3. 文本自动粘贴，点击 **识别**（⌘↩）
-4. 确认结果后点击 **添加到日历**（↩）
+4. 确认后点 **添加到日历**（↩）
 
-### Launcher.app
-
-`Launcher.app` 是一个 AppleScript 启动器，可以绑定到系统快捷键：
-
-系统设置 → 键盘 → 快捷键 → App 快捷键 → 添加 Launcher.app → 设置组合键
+**历史记录**：已添加的事件显示在面板下方，点击可重新编辑。
 
 ## 📦 项目结构
 
@@ -62,8 +55,7 @@ Sources/SnapCal/
 ├── Services/
 │   ├── LLMService.swift       # AI 事件提取
 │   ├── CalendarService.swift  # 系统日历
-│   ├── HistoryStore.swift     # 历史记录
-│   └── HotkeyManager.swift    # 全局热键
+│   └── HistoryStore.swift     # 历史记录
 └── Views/
     ├── CommandPanel.swift     # 主面板
     └── SettingsWindow.swift   # 设置窗口
