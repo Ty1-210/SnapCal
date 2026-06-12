@@ -50,6 +50,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         editMenu.addItem(NSMenuItem(title: "全选", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
     }
 
+    func applicationDidBecomeActive(_ notification: Notification) {
+        // Open panel when activated externally (e.g. Service shortcut or Spotlight)
+        if !CommandPanelController.shared.isVisible {
+            CommandPanelController.shared.show()
+        }
+    }
+
     @objc func openPanel() { CommandPanelController.shared.show() }
     @objc func openSettings() { SettingsWindowController.shared.show() }
     @objc func quitApp() { NSApp.terminate(nil) }
