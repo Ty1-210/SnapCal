@@ -23,15 +23,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         HotkeyManager.shared.onHotkey = { [weak self] in self?.openPanel() }
     }
 
-    func applicationDidBecomeActive(_ notification: Notification) {
-        // Only auto-open on external activation (Launcher/Dock), not when panel is already open
-        if !CommandPanelController.shared.isVisible {
-            CommandPanelController.shared.show()
-        }
-        // Return to background so we don't steal focus
-        DispatchQueue.main.async { NSApp.hide(nil) }
-    }
-
     private func setupMainMenu() {
         let mainMenu = NSMenu()
         NSApp.mainMenu = mainMenu

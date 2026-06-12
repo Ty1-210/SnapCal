@@ -142,8 +142,9 @@ struct CommandPanelView: View {
                 VStack {
                     Spacer()
                     Text("暂无记录，粘贴活动信息后点击「识别」")
-                    .multilineTextAlignment(.center)
                         .font(.caption).foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
                     Spacer()
                 }
                 .frame(maxHeight: .infinity)
