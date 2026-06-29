@@ -5,23 +5,39 @@ struct LLMService {
     private static var endpoint: String { UserDefaults.standard.string(forKey: "openai_endpoint") ?? "https://api.deepseek.com/v1/chat/completions" }
     private static var model: String { UserDefaults.standard.string(forKey: "openai_model") ?? "deepseek-chat" }
 
+    /// DateFormatter that always uses system timezone for parsing timezone-less ISO8601 strings.
+    private static var localDateParser: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone.current
+        f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        return f
+    }()
+
     static func extractEvent(from text: String) async -> CalendarEvent {
         guard !apiKey.isEmpty, URL(string: endpoint) != nil else {
             return CalendarEvent(title: text)
         }
 
-        let now = ISO8601DateFormatter().string(from: Date())
+        let localFmt = DateFormatter()
+        localFmt.dateFormat = "yyyy年M月d日 HH:mm"
+        localFmt.locale = Locale(identifier: "zh_CN")
+        let localTimeStr = localFmt.string(from: Date())
+
         let prompt = """
         你是一个日程提取助手。请严格从文本中提取活动信息。
-        当前时间：\(now)
+        用户本地时间：\(localTimeStr)
 
         要求：
         - 只返回一个 JSON 对象，不要任何其他内容（不要 markdown 代码块，不要解释）。
+        - 优先从文本中提取明确提到的时间（如"下午3点"、"14:00"、"明天上午9点"、"周三晚上7:30"）。
+        - 文本只提到日期但没提具体时间（如"明天开会"）→ 默认 09:00-10:00。
+        - 文本提到"晚上"/"今晚"/"傍晚"/"夜间"等 → 设置为当天 19:00-20:00。
+        - 绝对不要将时间设置为深夜时段（23:00之后），除非用户明确指定了深夜时间。
         - 无明确结束时间时，结束时间 = 开始时间 + 1小时。
-        - 无时间时，默认 09:00-10:00。
-        - 无法提取时，title 返回原文，startTime 返回 null。
+        - 完全无法提取时间信息 → startTime 返回 null。
 
-        {"title":"标题","startTime":"ISO8601","endTime":"ISO8601","location":"地点或null","notes":"备注或null"}
+        {"title":"标题","startTime":"ISO8601或null","endTime":"ISO8601或null","location":"地点或null","notes":"备注或null"}
         """
 
         return await callLLM(system: prompt, user: text, fallbackTitle: text)
@@ -92,7 +108,6 @@ struct LLMService {
                 return CalendarEvent(title: fallbackTitle)
             }
 
-            // Strip markdown code blocks if present (DeepSeek may wrap JSON in ```)
             content = content.trimmingCharacters(in: .whitespacesAndNewlines)
             if content.hasPrefix("```") {
                 content = content
@@ -118,14 +133,6 @@ struct LLMService {
                 return CalendarEvent(title: fallbackTitle)
             }
 
-            let df = ISO8601DateFormatter()
-            df.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
-            func parseDate(_ s: String?) -> Date? {
-                guard let s else { return nil }
-                return df.date(from: s) ?? ISO8601DateFormatter().date(from: s)
-            }
-
             return CalendarEvent(
                 title: parsed.title ?? fallbackTitle,
                 startDate: parseDate(parsed.startTime),
@@ -137,5 +144,14 @@ struct LLMService {
             print("[LLM] Error: \(error)")
             return CalendarEvent(title: fallbackTitle)
         }
+    }
+
+    /// Parse ISO8601 string using system timezone when no timezone offset is present.
+    private static func parseDate(_ s: String?) -> Date? {
+        guard let s else { return nil }
+        // If the LLM included a timezone offset, ISO8601DateFormatter handles it correctly
+        if let date = ISO8601DateFormatter().date(from: s) { return date }
+        // Otherwise, interpret as local time (system timezone)
+        return localDateParser.date(from: s)
     }
 }

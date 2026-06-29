@@ -179,7 +179,7 @@ struct CommandPanelView: View {
         let event = await LLMService.extractEvent(from: inputText.trimmingCharacters(in: .whitespacesAndNewlines))
         await MainActor.run {
             resultEvent = event; isLoading = false
-            statusMessage = event.startDate != nil ? "✓ 识别完成" : "⚠️ 未能提取时间"
+            statusMessage = event.startDate != nil ? "✓ 识别完成" : "⚠️ 未能提取时间，请在下方手动设定"
         }
     }
     private func refreshHistory() { history = HistoryStore.all() }
@@ -193,24 +193,68 @@ struct ResultContentView: View {
     let onDismiss: () -> Void
     let onSaved: () -> Void
     @State private var currentEvent: CalendarEvent
+    @State private var manualStart: Date
+    @State private var manualEnd: Date
 
     init(event: CalendarEvent, sourceHistoryItem: HistoryItem?, isLoading: Binding<Bool>, statusMessage: Binding<String>, onDismiss: @escaping () -> Void, onSaved: @escaping () -> Void) {
         self.event = event; self.sourceHistoryItem = sourceHistoryItem
         self._isLoading = isLoading; self._statusMessage = statusMessage
         self.onDismiss = onDismiss; self.onSaved = onSaved
         _currentEvent = State(initialValue: event)
+        let cal = Calendar.current
+        let defaultStart = cal.date(bySettingHour: 9, minute: 0, second: 0, of: Date()) ?? Date()
+        _manualStart = State(initialValue: event.startDate ?? defaultStart)
+        _manualEnd = State(initialValue: event.endDate ?? (event.startDate ?? defaultStart).addingTimeInterval(3600))
     }
+
+    private var isStartDateSet: Bool { currentEvent.startDate != nil }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("识别结果").font(.headline)
+
+            if !isStartDateSet {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.orange).font(.caption)
+                    Text("未识别到时间，请手动设定：")
+                        .font(.caption).foregroundColor(.secondary)
+                }
+            }
+
             Group {
                 InfoRow(label: "标题", value: currentEvent.title)
-                InfoRow(label: "开始", value: currentEvent.startDate.map { formatDate($0) } ?? "未识别")
-                InfoRow(label: "结束", value: currentEvent.endDate.map { formatDate($0) } ?? "未识别")
+
+                if isStartDateSet {
+                    InfoRow(label: "开始", value: formatDate(currentEvent.startDate!))
+                    InfoRow(label: "结束", value: currentEvent.endDate.map { formatDate($0) } ?? "未识别")
+                } else {
+                    HStack {
+                        Text("开始").font(.caption).foregroundColor(.secondary).frame(width: 40, alignment: .leading)
+                        DatePicker("", selection: $manualStart, displayedComponents: [.date, .hourAndMinute])
+                            .labelsHidden()
+                            .onChange(of: manualStart) { oldValue, newStart in
+                                currentEvent.startDate = newStart
+                                if manualEnd <= newStart {
+                                    manualEnd = newStart.addingTimeInterval(3600)
+                                    currentEvent.endDate = manualEnd
+                                }
+                            }
+                    }
+                    HStack {
+                        Text("结束").font(.caption).foregroundColor(.secondary).frame(width: 40, alignment: .leading)
+                        DatePicker("", selection: $manualEnd, displayedComponents: [.date, .hourAndMinute])
+                            .labelsHidden()
+                            .onChange(of: manualEnd) { oldValue, newEnd in
+                                currentEvent.endDate = newEnd
+                            }
+                    }
+                }
+
                 InfoRow(label: "地点", value: currentEvent.location ?? "无")
                 InfoRow(label: "备注", value: currentEvent.notes ?? "无")
             }
+
             HStack {
                 Button(action: { onDismiss() }) {
                     Label("取消", systemImage: "xmark.circle")
@@ -235,6 +279,12 @@ struct ResultContentView: View {
                 statusMessage = "移除旧记录..."
                 _ = await CalendarService.shared.deleteEvent(identifier: oldId)
             }
+        }
+
+        // If user manually set time via picker, make sure event is updated
+        if !isStartDateSet {
+            currentEvent.startDate = manualStart
+            currentEvent.endDate = manualEnd
         }
 
         let (success, identifier) = await CalendarService.shared.addEvent(currentEvent)
